@@ -1032,6 +1032,7 @@ function useBreakpoint() {
 
 type PageType = "home" | "prompt" | "problem";
 type PhaseType = "read" | "quiz" | "puzzle";
+type DifficultyFilter = "All" | "Easy" | "Medium" | "Hard";
 
 // --- MAIN APP ---
 export default function App() {
@@ -1043,7 +1044,10 @@ export default function App() {
   const [quizTime, setQuizTime] = useState(0);
   const [showImport, setShowImport] = useState(false);
   const [numberInput, setNumberInput] = useState("");
+  const [diffFilter, setDiffFilter] = useState<DifficultyFilter>("All");
   const [loaded, setLoaded] = useState(false);
+
+  const filteredProblems = diffFilter === "All" ? problems : problems.filter((p) => p.difficulty === diffFilter);
 
   // Load from persistent storage on mount
   useEffect(() => {
@@ -1185,16 +1189,45 @@ export default function App() {
               </button>
             </div>
 
+            {/* Difficulty filter */}
+            <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
+              {(["All", "Easy", "Medium", "Hard"] as const).map((d) => {
+                const active = diffFilter === d;
+                const color = d === "Easy" ? "#22c55e" : d === "Medium" ? "#f59e0b" : d === "Hard" ? "#ef4444" : "#94a3b8";
+                return (
+                  <button
+                    key={d}
+                    onClick={() => setDiffFilter(d)}
+                    style={{
+                      flex: 1,
+                      padding: "6px 0",
+                      background: active ? color + "18" : "transparent",
+                      border: `1.5px solid ${active ? color + "60" : "#1e293b"}`,
+                      borderRadius: 8,
+                      color: active ? color : "#64748b",
+                      fontSize: "0.72rem",
+                      fontWeight: 700,
+                      fontFamily: "'DM Sans', sans-serif",
+                      cursor: "pointer",
+                      transition: "all 0.15s",
+                    }}
+                  >
+                    {d}
+                  </button>
+                );
+              })}
+            </div>
+
             {/* Problem list */}
             <div style={{ color: "#64748b", fontSize: "0.7rem", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 10, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span>{problems.length} Problems Loaded</span>
+              <span>{filteredProblems.length}{diffFilter !== "All" ? ` ${diffFilter}` : ""} Problems</span>
               {problems.length > 0 && (
                 <button onClick={handleReset} style={{ background: "none", border: "none", color: "#ef444480", fontSize: "0.65rem", cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}>
                   Clear All
                 </button>
               )}
             </div>
-            {problems.length === 0 && (
+            {filteredProblems.length === 0 && problems.length === 0 && (
               <button
                 onClick={() => setShowImport(true)}
                 style={{
@@ -1217,7 +1250,7 @@ export default function App() {
               </button>
             )}
             <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: isMobile ? 8 : 10 }}>
-              {problems.map((p) => (
+              {filteredProblems.map((p) => (
                 <button
                   key={p.id}
                   onClick={() => {
