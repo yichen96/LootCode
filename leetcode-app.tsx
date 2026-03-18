@@ -1,5 +1,42 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo, type ReactNode, type CSSProperties, type ChangeEvent } from "react";
 import SAMPLE_PROBLEMS from "./leetcode_problems.json";
+
+// --- TYPES ---
+interface Example {
+  input: string;
+  output: string;
+  explanation: string;
+}
+
+interface MCQ {
+  question: string;
+  options: string[];
+  correct: number;
+  explanation: string;
+}
+
+interface CodeBlock {
+  id: string;
+  code: string;
+}
+
+interface CodePuzzleData {
+  description: string;
+  blocks: CodeBlock[];
+  distractors?: CodeBlock[];
+  correctOrder: (string | string[])[];
+}
+
+interface Problem {
+  id: number;
+  title: string;
+  difficulty: "Easy" | "Medium" | "Hard";
+  description: string;
+  examples: Example[];
+  constraints: string[];
+  mcq: MCQ[];
+  codePuzzle: CodePuzzleData;
+}
 
 // --- PROMPT TEMPLATE ---
 const PROMPT_TEMPLATE = `I need you to convert the following LeetCode problems into a specific JSON data format for my practice app. For each problem number I provide, generate a JSON object following this EXACT structure. Return ONLY a valid JSON array, no other text.
@@ -120,7 +157,7 @@ const Icons = {
 };
 
 // --- DIFFICULTY BADGE ---
-function DiffBadge({ d }) {
+function DiffBadge({ d }: { d: Problem["difficulty"] }) {
   const c = d === "Easy" ? "#22c55e" : d === "Medium" ? "#f59e0b" : "#ef4444";
   return (
     <span
@@ -142,7 +179,7 @@ function DiffBadge({ d }) {
 }
 
 // --- TIMER COMPONENT ---
-function Timer({ seconds, total }) {
+function Timer({ seconds, total }: { seconds: number; total: number }) {
   const pct = seconds / total;
   const clr = pct > 0.5 ? "#22c55e" : pct > 0.2 ? "#f59e0b" : "#ef4444";
   return (
@@ -167,7 +204,7 @@ function Timer({ seconds, total }) {
 }
 
 // --- MODAL ---
-function Modal({ show, children, onClose }) {
+function Modal({ show, children, onClose }: { show: boolean; children: ReactNode; onClose: () => void }) {
   if (!show) return null;
   return (
     <div
@@ -203,26 +240,26 @@ function Modal({ show, children, onClose }) {
 }
 
 // --- PHASE: PROBLEM DISPLAY ---
-function ProblemView({ problem, onReady }) {
+function ProblemView({ problem, onReady }: { problem: Problem; onReady: () => void }) {
   const [timer, setTimer] = useState(180);
-  const timerRef = useRef(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     timerRef.current = setInterval(() => {
       setTimer((t) => {
         if (t <= 1) {
-          clearInterval(timerRef.current);
+          clearInterval(timerRef.current!);
           return 0;
         }
         return t - 1;
       });
     }, 1000);
-    return () => clearInterval(timerRef.current);
+    return () => clearInterval(timerRef.current!);
   }, []);
 
   useEffect(() => {
     if (timer === 0) onReady();
-  }, [timer]);
+  }, [timer, onReady]);
 
   return (
     <div style={{ animation: "fadeUp 0.3s ease-out" }}>
@@ -318,14 +355,14 @@ function ProblemView({ problem, onReady }) {
 }
 
 // --- PHASE: MCQ QUIZ ---
-function MCQPhase({ problem, onComplete }) {
+function MCQPhase({ problem, onComplete }: { problem: Problem; onComplete: (time: number) => void }) {
   const [qIdx, setQIdx] = useState(0);
-  const [selected, setSelected] = useState(null);
+  const [selected, setSelected] = useState<number | null>(null);
   const [showResult, setShowResult] = useState(false);
   const [timer, setTimer] = useState(60);
   const [totalTime, setTotalTime] = useState(0);
   const [timedOut, setTimedOut] = useState(false);
-  const timerRef = useRef(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const q = problem.mcq[qIdx];
   const isCorrect = selected === q.correct;
@@ -338,13 +375,13 @@ function MCQPhase({ problem, onComplete }) {
     timerRef.current = setInterval(() => {
       setTimer((t) => {
         if (t <= 1) {
-          clearInterval(timerRef.current);
+          clearInterval(timerRef.current!);
           return 0;
         }
         return t - 1;
       });
     }, 1000);
-    return () => clearInterval(timerRef.current);
+    return () => clearInterval(timerRef.current!);
   }, [qIdx]);
 
   // Auto-reveal correct answer when timer hits 0 with no selection
@@ -356,9 +393,9 @@ function MCQPhase({ problem, onComplete }) {
     }
   }, [timer, selected, showResult]);
 
-  const handleSelect = (idx) => {
+  const handleSelect = (idx: number) => {
     if (showResult || timer === 0) return;
-    clearInterval(timerRef.current);
+    clearInterval(timerRef.current!);
     setSelected(idx);
     setShowResult(true);
     setTotalTime((t) => t + (60 - timer));
@@ -517,14 +554,14 @@ function MCQPhase({ problem, onComplete }) {
 }
 
 // --- PHASE: CODE PUZZLE ---
-function CodePuzzle({ problem, quizTime, onComplete }) {
+function CodePuzzle({ problem, quizTime, onComplete }: { problem: Problem; quizTime: number; onComplete: () => void }) {
   const puzzle = problem.codePuzzle;
   const allBlocks = [...puzzle.blocks, ...(puzzle.distractors || [])];
   const distractorIds = new Set((puzzle.distractors || []).map((d) => d.id));
-  const correctCount = puzzle.correctOrder.reduce((sum, entry) => sum + (Array.isArray(entry) ? entry.length : 1), 0);
+  const correctCount = puzzle.correctOrder.reduce((sum: number, entry) => sum + (Array.isArray(entry) ? entry.length : 1), 0);
 
-  const [placed, setPlaced] = useState([]);
-  const [available, setAvailable] = useState(() => {
+  const [placed, setPlaced] = useState<CodeBlock[]>([]);
+  const [available, setAvailable] = useState<CodeBlock[]>(() => {
     const arr = [...allBlocks];
     for (let i = arr.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
@@ -532,46 +569,42 @@ function CodePuzzle({ problem, quizTime, onComplete }) {
     }
     return arr;
   });
-  const [result, setResult] = useState(null);
+  const [result, setResult] = useState<boolean | null>(null);
   const [timer, setTimer] = useState(0);
-  const timerRef = useRef(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     timerRef.current = setInterval(() => setTimer((t) => t + 1), 1000);
-    return () => clearInterval(timerRef.current);
+    return () => clearInterval(timerRef.current!);
   }, []);
 
-  const addBlock = (block) => {
+  const addBlock = (block: CodeBlock) => {
     setPlaced([...placed, block]);
     setAvailable(available.filter((b) => b.id !== block.id));
   };
 
-  const removeBlock = (block) => {
+  const removeBlock = (block: CodeBlock) => {
     setAvailable([...available, block]);
     setPlaced(placed.filter((b) => b.id !== block.id));
   };
 
-  const moveUp = (idx) => {
+  const moveUp = (idx: number) => {
     if (idx === 0) return;
     const arr = [...placed];
     [arr[idx - 1], arr[idx]] = [arr[idx], arr[idx - 1]];
     setPlaced(arr);
   };
 
-  const moveDown = (idx) => {
+  const moveDown = (idx: number) => {
     if (idx === placed.length - 1) return;
     const arr = [...placed];
     [arr[idx], arr[idx + 1]] = [arr[idx + 1], arr[idx]];
     setPlaced(arr);
   };
 
-  // Expand correctOrder into a flat expected list, accounting for swappable groups.
-  // correctOrder can be like: ["a", ["b","c"], "d"] meaning b,c can appear in any order.
-  // We check if the placed IDs match one valid permutation.
-  const isCorrectPlacement = useCallback((placedIds) => {
+  const isCorrectPlacement = useCallback((placedIds: string[]) => {
     const order = puzzle.correctOrder;
-    // Expand order into slots: each slot is a set of acceptable IDs at consecutive positions
-    const slots = []; // array of { ids: Set, count: number }
+    const slots: { ids: Set<string>; count: number }[] = [];
     for (const entry of order) {
       if (Array.isArray(entry)) {
         slots.push({ ids: new Set(entry), count: entry.length });
@@ -582,10 +615,9 @@ function CodePuzzle({ problem, quizTime, onComplete }) {
     const totalExpected = slots.reduce((sum, s) => sum + s.count, 0);
     if (placedIds.length !== totalExpected) return false;
 
-    let pi = 0; // pointer into placedIds
+    let pi = 0;
     for (const slot of slots) {
       const chunk = placedIds.slice(pi, pi + slot.count);
-      // Every ID in chunk must be in slot.ids, and all slot.ids must be covered
       const chunkSet = new Set(chunk);
       if (chunkSet.size !== slot.count) return false;
       for (const id of chunk) {
@@ -596,9 +628,8 @@ function CodePuzzle({ problem, quizTime, onComplete }) {
     return true;
   }, [puzzle.correctOrder]);
 
-  // Build a map: blockId -> set of valid positions, for error highlighting
   const validPositionsMap = useMemo(() => {
-    const map = {};
+    const map: Record<string, Set<number>> = {};
     const order = puzzle.correctOrder;
     let pos = 0;
     for (const entry of order) {
@@ -617,14 +648,13 @@ function CodePuzzle({ problem, quizTime, onComplete }) {
   }, [puzzle.correctOrder]);
 
   const checkSolution = () => {
-    clearInterval(timerRef.current);
+    clearInterval(timerRef.current!);
     const placedIds = placed.map((b) => b.id);
     const correct = isCorrectPlacement(placedIds);
     setResult(correct);
   };
 
-  // Determine per-block error state for feedback
-  const getBlockError = (block, idx) => {
+  const getBlockError = (block: CodeBlock, idx: number): string | null => {
     if (result !== false) return null;
     if (distractorIds.has(block.id)) return "distractor";
     const validPos = validPositionsMap[block.id];
@@ -632,7 +662,6 @@ function CodePuzzle({ problem, quizTime, onComplete }) {
     return null;
   };
 
-  // Count how many distractors are in placed
   const placedDistractorCount = placed.filter((b) => distractorIds.has(b.id)).length;
   const hasDistractorsInSolution = placedDistractorCount > 0;
 
@@ -673,7 +702,7 @@ function CodePuzzle({ problem, quizTime, onComplete }) {
         >
           {puzzle.correctOrder.flatMap((entry) => Array.isArray(entry) ? entry : [entry]).map((id) => {
             const block = puzzle.blocks.find((b) => b.id === id);
-            return <div key={id}>{block.code}</div>;
+            return <div key={id}>{block?.code}</div>;
           })}
         </div>
         <button onClick={onComplete} style={btnPrimary}>
@@ -835,7 +864,7 @@ function CodePuzzle({ problem, quizTime, onComplete }) {
 }
 
 // --- PROMPT GENERATOR PAGE ---
-function PromptPage({ onBack }) {
+function PromptPage({ onBack }: { onBack: () => void }) {
   const [copied, setCopied] = useState(false);
   const handleCopy = () => {
     navigator.clipboard.writeText(PROMPT_TEMPLATE).then(() => {
@@ -904,20 +933,20 @@ function PromptPage({ onBack }) {
 }
 
 // --- IMPORT MODAL (file upload) ---
-function ImportModal({ show, onClose, onImport }) {
+function ImportModal({ show, onClose, onImport }: { show: boolean; onClose: () => void; onImport: (problems: Problem[]) => void }) {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [fileName, setFileName] = useState("");
-  const fileRef = useRef(null);
+  const fileRef = useRef<HTMLInputElement>(null);
 
-  const processJSON = (text) => {
+  const processJSON = (text: string) => {
     try {
       let cleaned = text.trim();
       if (cleaned.startsWith("```")) {
         cleaned = cleaned.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
       }
       const data = JSON.parse(cleaned);
-      const arr = Array.isArray(data) ? data : [data];
+      const arr: Problem[] = Array.isArray(data) ? data : [data];
       for (const p of arr) {
         if (!p.id || !p.title || !p.mcq || !p.codePuzzle) {
           throw new Error(`Problem "${p.title || p.id}" is missing required fields.`);
@@ -928,19 +957,19 @@ function ImportModal({ show, onClose, onImport }) {
       setFileName("");
       setLoading(false);
     } catch (e) {
-      setError(e.message);
+      setError((e as Error).message);
       setLoading(false);
     }
   };
 
-  const handleFile = (e) => {
+  const handleFile = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setFileName(file.name);
     setError("");
     setLoading(true);
     const reader = new FileReader();
-    reader.onload = (evt) => processJSON(evt.target.result);
+    reader.onload = (evt) => processJSON(evt.target?.result as string);
     reader.onerror = () => { setError("Failed to read file."); setLoading(false); };
     reader.readAsText(file);
   };
@@ -1001,13 +1030,16 @@ function useBreakpoint() {
   return { isMobile: width < 640, isTablet: width >= 640 && width < 1024, isDesktop: width >= 1024, width };
 }
 
+type PageType = "home" | "prompt" | "problem";
+type PhaseType = "read" | "quiz" | "puzzle";
+
 // --- MAIN APP ---
 export default function App() {
-  const { isMobile, isDesktop, width } = useBreakpoint();
-  const [problems, setProblems] = useState(SAMPLE_PROBLEMS);
-  const [page, setPage] = useState("home"); // home | prompt | problem
-  const [selectedProblem, setSelectedProblem] = useState(null);
-  const [phase, setPhase] = useState("read"); // read | quiz | puzzle
+  const { isMobile, isDesktop } = useBreakpoint();
+  const [problems, setProblems] = useState<Problem[]>(SAMPLE_PROBLEMS as Problem[]);
+  const [page, setPage] = useState<PageType>("home");
+  const [selectedProblem, setSelectedProblem] = useState<Problem | null>(null);
+  const [phase, setPhase] = useState<PhaseType>("read");
   const [quizTime, setQuizTime] = useState(0);
   const [showImport, setShowImport] = useState(false);
   const [numberInput, setNumberInput] = useState("");
@@ -1023,7 +1055,7 @@ export default function App() {
           setProblems(parsed);
         }
       }
-    } catch (e) {
+    } catch {
       // No saved data or storage unavailable — use defaults
     }
     setLoaded(true);
@@ -1034,7 +1066,7 @@ export default function App() {
     if (!loaded) return;
     try {
       localStorage.setItem("leetdrill-problems", JSON.stringify(problems));
-    } catch (e) {
+    } catch {
       // Storage write failed — silent
     }
   }, [problems, loaded]);
@@ -1051,7 +1083,7 @@ export default function App() {
     }
   };
 
-  const handleImport = (arr) => {
+  const handleImport = (arr: Problem[]) => {
     setProblems((prev) => {
       const ids = new Set(prev.map((p) => p.id));
       const newOnes = arr.filter((p) => !ids.has(p.id));
@@ -1063,9 +1095,9 @@ export default function App() {
   };
 
   // Clear all imported data
-  const handleReset = async () => {
-    setProblems(SAMPLE_PROBLEMS);
-    try { await window.storage.delete("leetdrill-problems"); } catch(e) {}
+  const handleReset = () => {
+    setProblems(SAMPLE_PROBLEMS as Problem[]);
+    try { localStorage.removeItem("leetdrill-problems"); } catch { /* silent */ }
   };
 
   return (
@@ -1235,7 +1267,7 @@ export default function App() {
                   <DiffBadge d={selectedProblem.difficulty} />
                 </div>
                 <div style={{ display: "flex", gap: 4 }}>
-                  {["Quiz", "Puzzle"].map((label, i) => {
+                  {(["Quiz", "Puzzle"] as const).map((label, i) => {
                     const active = (phase === "quiz" && i === 0) || (phase === "puzzle" && i === 1);
                     const done = phase === "puzzle" && i === 0;
                     return (
@@ -1289,7 +1321,7 @@ export default function App() {
 }
 
 // --- SHARED STYLES ---
-const btnPrimary = {
+const btnPrimary: CSSProperties = {
   background: "#f59e0b",
   color: "#0f172a",
   border: "none",
@@ -1306,7 +1338,7 @@ const btnPrimary = {
   transition: "all 0.15s",
 };
 
-const btnSmall = {
+const btnSmall: CSSProperties = {
   background: "#1e293b",
   color: "#cbd5e1",
   border: "1px solid #334155",
@@ -1319,7 +1351,7 @@ const btnSmall = {
   transition: "all 0.15s",
 };
 
-const microBtn = {
+const microBtn: CSSProperties = {
   background: "none",
   border: "none",
   color: "#64748b",
