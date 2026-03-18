@@ -1,4 +1,4 @@
-# LootCode
+# LeetCram
 
 Interactive LeetCode practice app with MCQs and code puzzles. Aanswers looted from LLM.
 
@@ -8,7 +8,7 @@ Use it anywhere - rest time between sets in the gym, or commuting on the train.
 
 ## Demo
 
-![LootCode Demo](demo.gif)
+![LeetCram Demo](demo.gif)
 
 ## Features
 
@@ -24,7 +24,7 @@ Use it anywhere - rest time between sets in the gym, or commuting on the train.
 
 ## Generating Custom Problems
 
-LootCode includes a built-in prompt template for generating new problems with Claude (or any LLM).
+LeetCram includes a built-in prompt template for generating new problems with Claude (or any LLM).
 
 1. Click **Prompt** in the app header
 2. Copy the prompt to your clipboard

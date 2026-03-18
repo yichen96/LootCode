@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-LootCode is a LeetCode practice app built as a single-file React+TypeScript component (`leetcode-app.tsx`). It provides an interactive study flow: browse problems → read description → answer MCQs → solve code puzzles (drag-and-drop block arrangement).
+LeetCram is a LeetCode practice app built as a single-file React+TypeScript component (`leetcode-app.tsx`). It provides an interactive study flow: browse problems → read description → answer MCQs → solve code puzzles (drag-and-drop block arrangement).
 
 ## Architecture
 

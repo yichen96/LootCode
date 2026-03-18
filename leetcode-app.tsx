@@ -1145,9 +1145,9 @@ export default function App() {
             onClick={() => { setPage("home"); setSelectedProblem(null); }}
             style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: 8 }}
           >
-            <img src="/logo.png" alt="LootCode" style={{ width: isMobile ? 36 : 44, height: isMobile ? 36 : 44, objectFit: "contain" }} />
+            <img src="/logo.png" alt="LeetCram" style={{ width: isMobile ? 36 : 44, height: isMobile ? 36 : 44, objectFit: "contain" }} />
             <span style={{ fontFamily: "'Outfit', sans-serif", fontWeight: 700, fontSize: isMobile ? "1.05rem" : "1.3rem", color: "#f1f5f9" }}>
-              Loot<span style={{ color: "#4ade80" }}>Code</span>
+              Leet<span style={{ color: "#4ade80" }}>Cram</span>
             </span>
           </div>
           <div style={{ display: "flex", gap: 6 }}>
